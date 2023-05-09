@@ -2,10 +2,5 @@
 pub mod test {
 
     #[test]
-    pub fn test_heap() {
-
-
-    }
-
-
+    pub fn test_heap() {}
 }
