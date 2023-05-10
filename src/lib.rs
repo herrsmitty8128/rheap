@@ -23,7 +23,7 @@ impl Display for ErrorKind {
     }
 }
 
-/// The error type used by a min and max heap.
+/// The error type used by a heap.
 #[derive(Debug, Copy, Clone)]
 pub struct Error {
     kind: ErrorKind,
@@ -46,23 +46,24 @@ impl Error {
 
 impl error::Error for Error {}
 
-/// A specialized result type that is used by both heap implementations.
+/// A specialized result type to make error handling simpler.
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// An enum used to indicate whether a heap is a minimum or maximum heap.
-/// Minimum heaps are sorted in (mostly) ascending order.
-/// Maximum heaps are sorted in (mostly) descending order.
 /// It is your responsibility use the same HeapType when calling different functions for the same heap.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HeapType {
-    MinHeap,
-    MaxHeap,
+    MinHeap = Ordering::Less as isize,
+    MaxHeap = Ordering::Greater as isize,
 }
 
-/// Sorts the heap by iterating down the tree starting from index ```p```.
-/// Panics if p is out of bounds.
+/// Sorts the heap by iterating down the tree starting from index p.
+/// 
+/// ## Panics:
+/// 
+/// Panics if *index* is out of bounds.
 ///
-/// # Example:
+/// ## Example:
 ///
 /// ```
 /// use rheap::{HeapType, sort_down};
@@ -74,39 +75,37 @@ pub enum HeapType {
 /// sort_down(&mut heap, HeapType::MinHeap, index);
 /// assert!(heap[0] == 1);
 /// ```
-pub fn sort_down<T>(heap: &mut [T], heap_type: HeapType, mut p: usize)
+pub fn sort_down<T>(heap: &mut [T], heap_type: HeapType, mut index: usize)
 where
     T: Ord,
 {
-    let order: Ordering = if heap_type == HeapType::MaxHeap {
-        Ordering::Greater
-    } else {
-        Ordering::Less
-    };
     let length: usize = heap.len();
     loop {
-        let left: usize = (p * 2) + 1;
+        let left: usize = (index * 2) + 1;
         let right: usize = left + 1;
-        let mut x: usize = if left < length && heap[left].cmp(&heap[p]) == order {
+        let mut x: usize = if left < length && heap[left].cmp(&heap[index]) as isize == heap_type as isize {
             left
         } else {
-            p
+            index
         };
-        if right < length && heap[right].cmp(&heap[x]) == order {
+        if right < length && heap[right].cmp(&heap[x]) as isize == heap_type as isize {
             x = right;
         }
-        if x == p {
+        if x == index {
             break;
         }
-        heap.swap(p, x);
-        p = x;
+        heap.swap(index, x);
+        index = x;
     }
 }
 
-/// Sorts the heap by iterating up the tree starting from index ```c```.
+/// Sorts the heap by iterating up the tree starting from index c.
+/// 
+/// ## Panics:
+/// 
 /// Panics if p is out of bounds.
 ///
-/// # Example:
+/// ## Example:
 ///
 /// ```
 /// use rheap::{HeapType, sort_up};
@@ -121,14 +120,9 @@ pub fn sort_up<T>(heap: &mut [T], heap_type: HeapType, mut c: usize)
 where
     T: Ord,
 {
-    let order: Ordering = if heap_type == HeapType::MaxHeap {
-        Ordering::Greater
-    } else {
-        Ordering::Less
-    };
     while c > 0 {
         let p: usize = (c - 1) >> 1; // calculate the index of the parent node
-        if heap[c].cmp(&heap[p]) == order {
+        if heap[c].cmp(&heap[p]) as isize == heap_type as isize {
             heap.swap(c, p); // if the child is smaller than the parent, then swap them
         } else {
             break;
@@ -137,9 +131,9 @@ where
     }
 }
 
-/// Inserts ```element``` into the heap.
+/// Inserts element into the heap.
 ///
-/// # Example:
+/// ## Example:
 ///
 /// ```
 /// use rheap::{HeapType, insert};
@@ -157,9 +151,9 @@ where
     sort_up(heap, heap_type, c)
 }
 
-/// Removes the *smallest* item from the top of the heap. Returns ```None``` if the heap is empty.
+/// Removes the smallest item from the top of the heap. Returns *None* if the heap is empty.
 ///
-/// # Example:
+/// ## Example:
 ///
 /// ```
 /// use rheap::{HeapType, extract};
@@ -179,11 +173,10 @@ where
     remove(heap, heap_type, 0).ok()
 }
 
-/// Performs a linear search to find the index of ```element``` on the heap.
-/// If the element is found, then it will return its index on the heap.
-/// Otherwise, it will return ```None```.
+/// Performs a linear search to find the index of an element on the heap.
+/// Returns *None* if the element was not found.
 ///
-/// # Example:
+/// ## Example:
 ///
 /// ```
 /// use rheap::{HeapType, find};
@@ -203,10 +196,10 @@ where
     (0..heap.len()).find(|&i| heap[i] == *element)
 }
 
-/// Updates the value of the ```element``` at ```index```.
+/// Updates the value of the element at index
 /// Returns and error if the element is not found in the heap or the index is out of bounds.
 ///
-/// # Example:
+/// ## Example:
 ///
 /// ```
 /// use rheap::{HeapType, update};
@@ -247,10 +240,10 @@ where
     }
 }
 
-/// Removes and returns the element at ```index```.
+/// Removes and returns the element at index.
 /// Returns an error if the heap is empty or if the index is out of bounds.
 ///
-/// # Example:
+/// ## Example:
 ///
 /// ```
 /// use rheap::{HeapType, remove};
@@ -286,12 +279,12 @@ where
 
 /// Performs an in-place heap sort.
 ///
-/// # Example:
+/// ## Example:
 ///
 /// ```
 /// use rheap::{HeapType, heap_sort};
 ///
-/// let mut heap: Vec<usize> = vec![8,6,9,5,7,0,4,6,3,2];
+/// let mut heap: Vec<usize> = vec![8, 66, 9, 55, 7, 0, 14, 6, 37, 2];
 /// heap_sort(&mut heap, HeapType::MinHeap);
 /// assert!(heap[0] == 0);
 /// ```
@@ -299,16 +292,21 @@ pub fn heap_sort<T>(heap: &mut [T], heap_type: HeapType)
 where
     T: Ord,
 {
-    for i in (0..heap.len() - 1).rev() {
-        sort_down(heap, heap_type, i);
+    let len: usize = heap.len();
+    if len > 1 {
+        let parent: usize = (len - 2) >> 1;
+        for i in (0..=parent).rev() {
+            sort_down(heap, heap_type, i);
+        }
     }
 }
+
 
 pub trait Heap<T>
 where
     T: Ord + Eq + Copy,
 {
-    /// Inserts ```element``` into the heap.
+    /// Inserts an element into the heap.
     fn insert(&mut self, element: T);
 
     /// Removes the *smallest* item from the top of the heap. Returns ```None``` if the heap is empty.
@@ -338,6 +336,9 @@ where
     fn is_empty(&self) -> bool;
 }
 
+/// A complete binary tree in which the value of each node in the tree is
+/// less than the value of each of its children. As a consequence, the smallest
+/// value in the tree is always located at the root of the tree.
 #[derive(Debug, Clone)]
 pub struct MinHeap<T>
 where
@@ -415,6 +416,10 @@ where
     }
 }
 
+
+/// A complete binary tree in which the value of each node in the tree
+/// is greater than the value of each of its children. As a consequence,
+/// the largest value in the tree is always located at the root of the tree.
 #[derive(Debug, Clone)]
 pub struct MaxHeap<T>
 where
