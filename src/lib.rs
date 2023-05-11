@@ -58,9 +58,9 @@ pub enum HeapType {
 }
 
 /// Sorts the heap by iterating down the tree starting from index p.
-/// 
+///
 /// ## Panics:
-/// 
+///
 /// Panics if *index* is out of bounds.
 ///
 /// ## Example:
@@ -83,11 +83,12 @@ where
     loop {
         let left: usize = (index * 2) + 1;
         let right: usize = left + 1;
-        let mut x: usize = if left < length && heap[left].cmp(&heap[index]) as isize == heap_type as isize {
-            left
-        } else {
-            index
-        };
+        let mut x: usize =
+            if left < length && heap[left].cmp(&heap[index]) as isize == heap_type as isize {
+                left
+            } else {
+                index
+            };
         if right < length && heap[right].cmp(&heap[x]) as isize == heap_type as isize {
             x = right;
         }
@@ -99,11 +100,7 @@ where
     }
 }
 
-/// Sorts the heap by iterating up the tree starting from index c.
-/// 
-/// ## Panics:
-/// 
-/// Panics if p is out of bounds.
+/// Sorts the heap by iterating up the tree starting from *index*.
 ///
 /// ## Example:
 ///
@@ -116,18 +113,18 @@ where
 /// sort_up(&mut heap, HeapType::MinHeap, index);
 /// assert!(heap[0] == 0);
 /// ```
-pub fn sort_up<T>(heap: &mut [T], heap_type: HeapType, mut c: usize)
+pub fn sort_up<T>(heap: &mut [T], heap_type: HeapType, mut index: usize)
 where
     T: Ord,
 {
-    while c > 0 {
-        let p: usize = (c - 1) >> 1; // calculate the index of the parent node
-        if heap[c].cmp(&heap[p]) as isize == heap_type as isize {
-            heap.swap(c, p); // if the child is smaller than the parent, then swap them
+    while index > 0 {
+        let p: usize = (index - 1) >> 1; // calculate the index of the parent node
+        if heap[index].cmp(&heap[p]) as isize == heap_type as isize {
+            heap.swap(index, p); // if the child is smaller than the parent, then swap them
         } else {
             break;
         }
-        c = p;
+        index = p;
     }
 }
 
@@ -229,9 +226,7 @@ where
     } else {
         let old_element: T = heap[index];
         heap[index] = new_element;
-        if (heap_type == HeapType::MaxHeap && new_element > old_element)
-            || (heap_type == HeapType::MinHeap && new_element < old_element)
-        {
+        if new_element.cmp(&old_element) as isize == heap_type as isize {
             sort_up(heap, heap_type, index);
         } else {
             sort_down(heap, heap_type, index);
@@ -272,7 +267,13 @@ where
         ))
     } else {
         let removed: T = heap.swap_remove(index);
-        sort_down(heap, heap_type, index);
+        if index < heap.len() {
+            if heap[index].cmp(&removed) as isize == heap_type as isize {
+                sort_up(heap, heap_type, index);
+            } else {
+                sort_down(heap, heap_type, index);
+            }
+        }
         Ok(removed)
     }
 }
@@ -301,7 +302,7 @@ where
     }
 }
 
-
+/// Trait that describes a minimum or maximum heap.
 pub trait Heap<T>
 where
     T: Ord + Eq + Copy,
@@ -309,17 +310,17 @@ where
     /// Inserts an element into the heap.
     fn insert(&mut self, element: T);
 
-    /// Removes the *smallest* item from the top of the heap. Returns ```None``` if the heap is empty.
+    /// Removes the smallest item from the top of the heap. Returns ```None``` if the heap is empty.
     fn extract(&mut self) -> Option<T>;
 
     /// Performs a linear search to find the index of ```element``` on the heap.
-    /// If the element is found, then it will return its index on the heap.
+    /// If ```element``` is found, then it will return its index on the heap.
     /// Otherwise, it will return ```None```.
     fn find(&self, element: &T) -> Option<usize>;
 
     /// Updates the value of the ```element``` at ```index```.
     /// Returns and error if the element is not found in the heap or the index is out of bounds.
-    fn update(&mut self, index: usize, replace_with: T) -> Result<T>;
+    fn update(&mut self, index: usize, new_element: T) -> Result<T>;
 
     /// Removes and returns the element at ```index```.
     /// Returns an error if the heap is empty or if the index is out of bounds.
@@ -334,6 +335,12 @@ where
 
     /// Returns true if the heap contains no elements.
     fn is_empty(&self) -> bool;
+
+    /// Returns the underlying array as a slice.
+    fn as_slice(&self) -> &[T];
+
+    /// Returns the underlying array as a mutable slice.
+    fn as_mut_slice(&mut self) -> &mut [T];
 }
 
 /// A complete binary tree in which the value of each node in the tree is
@@ -370,18 +377,31 @@ impl<T> Heap<T> for MinHeap<T>
 where
     T: Ord + Eq + Copy,
 {
+    /// Returns the underlying array as a slice.
+    fn as_slice(&self) -> &[T] {
+        self.heap.as_slice()
+    }
+
+    /// Returns the underlying array as a mutable slice.
+    fn as_mut_slice(&mut self) -> &mut [T] {
+        self.heap.as_mut_slice()
+    }
+
     /// Clears the heap, removing all elements.
     /// Note that this method has no effect on the allocated capacity of the heap.
+    #[inline]
     fn clear(&mut self) {
         self.heap.clear()
     }
 
     /// Returns the number of elements in the heap, also referred to as its 'length'.
+    #[inline]
     fn len(&self) -> usize {
         self.heap.len()
     }
 
-    /// Removes the *smallest* item from the top of the heap. Returns ```None``` if the heap is empty.
+    /// Removes the smallest item from the top of the heap. Returns ```None``` if the heap is empty.
+    #[inline]
     fn extract(&mut self) -> Option<T> {
         extract(&mut self.heap, HeapType::MinHeap)
     }
@@ -389,33 +409,37 @@ where
     /// Performs a linear search to find the index of ```element``` on the heap.
     /// If the element is found, then it will return its index on the heap.
     /// Otherwise, it will return ```None```.
+    #[inline]
     fn find(&self, element: &T) -> Option<usize> {
         find(&self.heap, element)
     }
 
     /// Inserts ```element``` into the heap.
+    #[inline]
     fn insert(&mut self, element: T) {
         insert(&mut self.heap, HeapType::MinHeap, element)
     }
 
     /// Returns true if the heap contains no elements.
+    #[inline]
     fn is_empty(&self) -> bool {
         self.heap.is_empty()
     }
 
     /// Removes and returns the element at ```index```.
     /// Returns an error if the heap is empty or if the index is out of bounds.
+    #[inline]
     fn remove(&mut self, index: usize) -> Result<T> {
         remove(&mut self.heap, HeapType::MinHeap, index)
     }
 
     /// Updates the value of the ```element``` at ```index```.
     /// Returns and error if the element is not found in the heap or the index is out of bounds.
-    fn update(&mut self, index: usize, replace_with: T) -> Result<T> {
-        update(&mut self.heap, HeapType::MinHeap, index, replace_with)
+    #[inline]
+    fn update(&mut self, index: usize, new_element: T) -> Result<T> {
+        update(&mut self.heap, HeapType::MinHeap, index, new_element)
     }
 }
-
 
 /// A complete binary tree in which the value of each node in the tree
 /// is greater than the value of each of its children. As a consequence,
@@ -451,18 +475,31 @@ impl<T> Heap<T> for MaxHeap<T>
 where
     T: Ord + Eq + Copy,
 {
+    /// Returns the underlying array as a slice.
+    fn as_slice(&self) -> &[T] {
+        self.heap.as_slice()
+    }
+
+    /// Returns the underlying array as a mutable slice.
+    fn as_mut_slice(&mut self) -> &mut [T] {
+        self.heap.as_mut_slice()
+    }
+
     /// Clears the heap, removing all elements.
     /// Note that this method has no effect on the allocated capacity of the heap.
+    #[inline]
     fn clear(&mut self) {
         self.heap.clear()
     }
 
     /// Returns the number of elements in the heap, also referred to as its 'length'.
+    #[inline]
     fn len(&self) -> usize {
         self.heap.len()
     }
 
-    /// Removes the *smallest* item from the top of the heap. Returns ```None``` if the heap is empty.
+    /// Removes the smallest item from the top of the heap. Returns ```None``` if the heap is empty.
+    #[inline]
     fn extract(&mut self) -> Option<T> {
         extract(&mut self.heap, HeapType::MaxHeap)
     }
@@ -470,29 +507,34 @@ where
     /// Performs a linear search to find the index of ```element``` on the heap.
     /// If the element is found, then it will return its index on the heap.
     /// Otherwise, it will return ```None```.
+    #[inline]
     fn find(&self, element: &T) -> Option<usize> {
         find(&self.heap, element)
     }
 
     /// Inserts ```element``` into the heap.
+    #[inline]
     fn insert(&mut self, element: T) {
         insert(&mut self.heap, HeapType::MaxHeap, element)
     }
 
     /// Returns true if the heap contains no elements.
+    #[inline]
     fn is_empty(&self) -> bool {
         self.heap.is_empty()
     }
 
     /// Removes and returns the element at ```index```.
     /// Returns an error if the heap is empty or if the index is out of bounds.
+    #[inline]
     fn remove(&mut self, index: usize) -> Result<T> {
         remove(&mut self.heap, HeapType::MaxHeap, index)
     }
 
     /// Updates the value of the ```element``` at ```index```.
     /// Returns and error if the element is not found in the heap or the index is out of bounds.
-    fn update(&mut self, index: usize, replace_with: T) -> Result<T> {
-        update(&mut self.heap, HeapType::MaxHeap, index, replace_with)
+    #[inline]
+    fn update(&mut self, index: usize, new_element: T) -> Result<T> {
+        update(&mut self.heap, HeapType::MaxHeap, index, new_element)
     }
 }
