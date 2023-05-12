@@ -1,14 +1,10 @@
 # rheap
 
-*rheap* is a simple Rust library containing an implementation of a minimum and a maximum heap.
+*rheap* is a Rust library containing an implementation of a minimum and a maximum heap.
 
 ## License
 
 *rheap* is licensed under the MIT License.
-
-## Dependancies
-
-None :-)
 
 ## Documentation
 

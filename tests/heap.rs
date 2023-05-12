@@ -4,68 +4,79 @@ pub mod test {
     use rand::prelude::*;
     use rheap::{extract, find, heap_sort, insert, remove, update, HeapType};
 
-    pub fn smallest_is_on_top(heap: &Vec<usize>) -> bool {
-        for i in 1..heap.len() {
-            if heap[0] >= heap[i] {
-                return false;
+    const COUNT: usize = 10000;
+
+    #[test]
+    pub fn test_min_heap() {
+        test_heap(HeapType::MinHeap);
+    }
+
+    #[test]
+    pub fn test_max_heap() {
+        test_heap(HeapType::MaxHeap);
+    }
+
+    pub fn top_has_correct_value(heap: &Vec<usize>, heap_type: HeapType) -> bool {
+        if heap_type == HeapType::MinHeap {
+            for i in 1..heap.len() {
+                if heap[0] >= heap[i] {
+                    return false;
+                }
+            }
+        } else {
+            for i in 1..heap.len() {
+                if heap[0] <= heap[i] {
+                    return false;
+                }
             }
         }
         return true;
     }
 
-    const COUNT: usize = 10000;
-
-    #[test]
-    pub fn test_heap() {
+    pub fn test_heap(heap_type: HeapType) {
         let mut heap: Vec<usize> = vec![0; COUNT];
 
         rand::thread_rng().fill(&mut heap[..]);
 
-        heap_sort(&mut heap, HeapType::MinHeap);
+        heap_sort(&mut heap, heap_type);
 
-        assert!(smallest_is_on_top(&heap));
+        assert!(top_has_correct_value(&heap, heap_type));
 
         while !heap.is_empty() {
-            extract(&mut heap, HeapType::MinHeap);
-            assert!(smallest_is_on_top(&heap));
+            extract(&mut heap, heap_type);
+            assert!(top_has_correct_value(&heap, heap_type));
         }
 
         for _ in 0..COUNT {
-            insert(&mut heap, HeapType::MinHeap, rand::random::<usize>());
-            assert!(smallest_is_on_top(&heap));
+            insert(&mut heap, heap_type, rand::random::<usize>());
+            assert!(top_has_correct_value(&heap, heap_type));
         }
 
         while !heap.is_empty() {
             let len: usize = heap.len();
-            if remove(
-                &mut heap,
-                HeapType::MinHeap,
-                rand::thread_rng().gen_range(0..len),
-            )
-            .is_err()
-            {
+            if remove(&mut heap, heap_type, rand::thread_rng().gen_range(0..len)).is_err() {
                 panic!();
             }
-            assert!(smallest_is_on_top(&heap));
+            assert!(top_has_correct_value(&heap, heap_type));
         }
 
         heap.resize_with(COUNT, || rand::random::<usize>());
-        heap_sort(&mut heap, HeapType::MinHeap);
-        assert!(smallest_is_on_top(&heap));
+        heap_sort(&mut heap, heap_type);
+        assert!(top_has_correct_value(&heap, heap_type));
 
         for _ in 0..COUNT {
             let len: usize = heap.len();
             if update(
                 &mut heap,
-                HeapType::MinHeap,
+                heap_type,
                 rand::thread_rng().gen_range(0..len),
-                rand::random::<usize>(),
+                |x| *x = rand::random::<usize>(),
             )
             .is_err()
             {
                 panic!();
             }
-            assert!(smallest_is_on_top(&heap));
+            assert!(top_has_correct_value(&heap, heap_type));
         }
 
         for _ in 0..COUNT {
@@ -86,22 +97,18 @@ pub mod test {
                 0 => {
                     // insert
                     let n = rand::random::<usize>();
-                    insert(&mut heap, HeapType::MinHeap, n);
+                    insert(&mut heap, heap_type, n);
                 }
                 1 => {
                     // extract
-                    extract(&mut heap, HeapType::MinHeap);
+                    extract(&mut heap, heap_type);
                 }
                 2 => {
                     // remove
                     if !heap.is_empty() {
                         let len: usize = heap.len();
-                        if remove(
-                            &mut heap,
-                            HeapType::MinHeap,
-                            rand::thread_rng().gen_range(0..len),
-                        )
-                        .is_err()
+                        if remove(&mut heap, heap_type, rand::thread_rng().gen_range(0..len))
+                            .is_err()
                         {
                             panic!()
                         }
@@ -112,9 +119,9 @@ pub mod test {
                     let len: usize = heap.len();
                     if update(
                         &mut heap,
-                        HeapType::MinHeap,
+                        heap_type,
                         rand::thread_rng().gen_range(0..len),
-                        rand::random::<usize>(),
+                        |x| *x = rand::random::<usize>(),
                     )
                     .is_err()
                     {
@@ -124,7 +131,7 @@ pub mod test {
             }
 
             assert!(
-                smallest_is_on_top(&heap),
+                top_has_correct_value(&heap, heap_type),
                 "### Your choice of {} was a bad one. prev_choice = {} ###",
                 choice,
                 prev_choice
