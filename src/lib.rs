@@ -340,12 +340,6 @@ where
 
     /// Returns true if the heap contains no elements.
     fn is_empty(&self) -> bool;
-
-    /// Returns the underlying array as a slice.
-    fn as_slice(&self) -> &[T];
-
-    /// Returns the underlying array as a mutable slice.
-    fn as_mut_slice(&mut self) -> &mut [T];
 }
 
 /// A complete binary tree in which the value of each node in the tree is
@@ -382,16 +376,6 @@ impl<T> Heap<T> for MinHeap<T>
 where
     T: Ord + Eq + Copy,
 {
-    /// Returns the underlying array as a slice.
-    fn as_slice(&self) -> &[T] {
-        self.heap.as_slice()
-    }
-
-    /// Returns the underlying array as a mutable slice.
-    fn as_mut_slice(&mut self) -> &mut [T] {
-        self.heap.as_mut_slice()
-    }
-
     /// Clears the heap, removing all elements.
     /// Note that this method has no effect on the allocated capacity of the heap.
     #[inline]
@@ -419,7 +403,7 @@ where
         find(&self.heap, element)
     }
 
-    /// Inserts ```element``` into the heap.
+    /// Inserts an element into the heap.
     #[inline]
     fn insert(&mut self, element: T) {
         insert(&mut self.heap, HeapType::MinHeap, element)
@@ -483,16 +467,6 @@ impl<T> Heap<T> for MaxHeap<T>
 where
     T: Ord + Eq + Copy,
 {
-    /// Returns the underlying array as a slice.
-    fn as_slice(&self) -> &[T] {
-        self.heap.as_slice()
-    }
-
-    /// Returns the underlying array as a mutable slice.
-    fn as_mut_slice(&mut self) -> &mut [T] {
-        self.heap.as_mut_slice()
-    }
-
     /// Clears the heap, removing all elements.
     /// Note that this method has no effect on the allocated capacity of the heap.
     #[inline]
@@ -520,7 +494,7 @@ where
         find(&self.heap, element)
     }
 
-    /// Inserts ```element``` into the heap.
+    /// Inserts an element into the heap.
     #[inline]
     fn insert(&mut self, element: T) {
         insert(&mut self.heap, HeapType::MaxHeap, element)
