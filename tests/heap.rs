@@ -1,20 +1,19 @@
 #[cfg(test)]
 pub mod test {
 
-
     use rand::prelude::*;
-    use rheap::{Heap, MIN_HEAP, MAX_HEAP};
+    use rheap::Heap;
 
     const COUNT: usize = 5000;
 
     #[test]
     pub fn test_min_heap() {
-        test_heap::<4, MIN_HEAP>();
+        test_heap::<2, false>();
     }
 
     #[test]
     pub fn test_max_heap() {
-        test_heap::<4, MAX_HEAP>();
+        test_heap::<2, true>();
     }
 
     pub fn test_heap<const D: usize, const H: bool>() {
