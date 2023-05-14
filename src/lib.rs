@@ -3,7 +3,6 @@
 // file LICENSE.txt or http://www.opensource.org/licenses/mit-license.php.
 
 use std::cmp::{Ord, Ordering};
-use std::error;
 use std::fmt::Display;
 
 /// An enum containing the types of errors that a heap might encounter.
@@ -44,482 +43,351 @@ impl Error {
     }
 }
 
-impl error::Error for Error {}
+impl std::error::Error for Error {}
 
 /// A specialized result type to make error handling simpler.
 pub type Result<T> = std::result::Result<T, Error>;
 
+/*
 /// An enum used to indicate whether a heap is a minimum or maximum heap.
 /// It is your responsibility use the same HeapType when calling different functions for the same heap.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum HeapType {
-    MinHeap = Ordering::Less as isize,
-    MaxHeap = Ordering::Greater as isize,
+    MinHeap,
+    MaxHeap,
 }
+*/
 
-/// Sorts the heap by iterating down the tree starting at *index*.
-///
-/// ## Panics:
-///
-/// Panics if *index* is out of bounds.
-///
-/// ## Example:
-///
-/// ```
-/// use rheap::{HeapType, sort_down};
-///
-/// let mut heap: Vec<usize> = vec![0, 1, 2, 3, 4, 5];
-/// let index: usize = 0;
-/// // remove the element located at index
-/// heap.swap_remove(index);
-/// sort_down(&mut heap, HeapType::MinHeap, index);
-/// assert!(heap[0] == 1);
-/// ```
-pub fn sort_down<T>(heap: &mut [T], heap_type: HeapType, mut index: usize)
-where
-    T: Ord,
-{
-    let length: usize = heap.len();
-    loop {
-        let left: usize = (index * 2) + 1;
-        let right: usize = left + 1;
-        let mut x: usize =
-            if left < length && heap[left].cmp(&heap[index]) as isize == heap_type as isize {
-                left
-            } else {
-                index
-            };
-        if right < length && heap[right].cmp(&heap[x]) as isize == heap_type as isize {
-            x = right;
-        }
-        if x == index {
-            break;
-        }
-        heap.swap(index, x);
-        index = x;
-    }
-}
-
-/// Sorts the heap by iterating up the tree starting at *index*.
-///
-/// ## Panics
-///
-/// Panics if *index* is out of bounds.
-///
-/// ## Example:
-///
-/// ```
-/// use rheap::{HeapType, sort_up};
-///
-/// let mut heap: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
-/// let index: usize = heap.len();
-/// heap.push(5);
-/// sort_up(&mut heap, HeapType::MinHeap, index);
-/// assert!(heap[0] == 0);
-/// ```
-pub fn sort_up<T>(heap: &mut [T], heap_type: HeapType, mut index: usize)
-where
-    T: Ord,
-{
-    while index > 0 {
-        let p: usize = (index - 1) >> 1; // calculate the index of the parent node
-        if heap[index].cmp(&heap[p]) as isize == heap_type as isize {
-            heap.swap(index, p); // if the child is smaller than the parent, then swap them
-        } else {
-            break;
-        }
-        index = p;
-    }
-}
-
-/// Inserts an element into the heap.
-///
-/// ## Example:
-///
-/// ```
-/// use rheap::{HeapType, insert};
-///
-/// let mut heap: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
-/// insert(&mut heap, HeapType::MinHeap, 5);
-/// assert!(heap[0] == 0);
-/// ```
-pub fn insert<T>(heap: &mut Vec<T>, heap_type: HeapType, element: T)
-where
-    T: Ord,
-{
-    let c: usize = heap.len();
-    heap.push(element);
-    sort_up(heap, heap_type, c)
-}
-
-/// Removes the element from the top of the heap. Returns *None* if the heap is empty.
-///
-/// ## Example:
-///
-/// ```
-/// use rheap::{HeapType, extract};
-///
-/// let mut heap: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
-/// if let Some(smallest) = extract(&mut heap, HeapType::MinHeap) {
-///     assert!(smallest == 0);
-///     assert!(heap[0] == 2);
-/// } else {
-///     panic!();
-/// }
-/// ```
-pub fn extract<T>(heap: &mut Vec<T>, heap_type: HeapType) -> Option<T>
-where
-    T: Ord,
-{
-    remove(heap, heap_type, 0).ok()
-}
-
-/// Performs a linear search to find the index of an element on the heap.
-/// Returns *None* if the element was not found.
-///
-/// ## Example:
-///
-/// ```
-/// use rheap::{HeapType, find};
-///
-/// let mut heap: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
-/// if let Some(index) = find(&mut heap, &6) {
-///     assert!(index == 3);
-///     assert!(heap[0] == 0);
-/// } else {
-///     panic!();
-/// }
-/// ```
-pub fn find<T>(heap: &[T], element: &T) -> Option<usize>
-where
-    T: Ord + Eq,
-{
-    (0..heap.len()).find(|&i| heap[i] == *element)
-}
-
-/// Updates the value of the element at *index*.
-/// Returns and error if the element is not found in the heap or the index is out of bounds.
-///
-/// ## Example:
-///
-/// ```
-/// use rheap::{HeapType, update};
-///
-/// let mut heap: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
-/// if let Ok(old_element) = update(&mut heap, HeapType::MinHeap, 3, |x| *x = 11) {
-///     assert!(heap[0] == 0);
-/// } else {
-///     panic!();
-/// }
-/// ```
-pub fn update<T, F>(heap: &mut [T], heap_type: HeapType, index: usize, update_func: F) -> Result<()>
-where
-    T: Ord,
-    F: Fn(&mut T),
-{
-    if heap.is_empty() {
-        Err(Error::new(
-            ErrorKind::EmptyHeap,
-            "Can not remove elements from an empty heap.",
-        ))
-    } else if index >= heap.len() {
-        Err(Error::new(
-            ErrorKind::InvalidIndex,
-            "Index is beyond the end of the heap.",
-        ))
-    } else {
-        update_func(&mut heap[index]);
-        if index == 0 || heap[index].cmp(&heap[(index - 1) >> 1]) as isize != heap_type as isize {
-            sort_down(heap, heap_type, index);
-        } else {
-            sort_up(heap, heap_type, index);
-        }
-        Ok(())
-    }
-}
-
-/// Removes and returns the element at *index*.
-/// Returns an error if the heap is empty or if the index is out of bounds.
-///
-/// ## Example:
-///
-/// ```
-/// use rheap::{HeapType, remove};
-///
-/// let mut heap: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
-/// if let Ok(old_element) = remove(&mut heap, HeapType::MinHeap, 3) {
-///     assert!(old_element == 6);
-///     assert!(heap[0] == 0);
-/// } else {
-///     panic!();
-/// }
-/// ```
-pub fn remove<T>(heap: &mut Vec<T>, heap_type: HeapType, index: usize) -> Result<T>
-where
-    T: Ord,
-{
-    if heap.is_empty() {
-        Err(Error::new(
-            ErrorKind::EmptyHeap,
-            "Can not remove elements from an empty heap.",
-        ))
-    } else if index >= heap.len() {
-        Err(Error::new(
-            ErrorKind::InvalidIndex,
-            "Index is beyond the end of the heap.",
-        ))
-    } else {
-        let removed: T = heap.swap_remove(index);
-        if index < heap.len() {
-            if heap[index].cmp(&removed) as isize == heap_type as isize {
-                sort_up(heap, heap_type, index);
-            } else {
-                sort_down(heap, heap_type, index);
-            }
-        }
-        Ok(removed)
-    }
-}
-
-/// Performs an in-place heap sort.
-///
-/// ## Example:
-///
-/// ```
-/// use rheap::{HeapType, heap_sort};
-///
-/// let mut heap: Vec<usize> = vec![8, 66, 9, 55, 7, 0, 14, 6, 37, 2];
-/// heap_sort(&mut heap, HeapType::MinHeap);
-/// assert!(heap[0] == 0);
-/// ```
-pub fn heap_sort<T>(heap: &mut [T], heap_type: HeapType)
-where
-    T: Ord,
-{
-    let len: usize = heap.len();
-    if len > 1 {
-        let parent: usize = (len - 2) >> 1;
-        for i in (0..=parent).rev() {
-            sort_down(heap, heap_type, i);
-        }
-    }
-}
-
-/// Trait that describes a minimum or maximum heap.
-pub trait Heap<T>
-where
-    T: Ord + Eq + Copy,
-{
-    /// Inserts an element into the heap.
-    fn insert(&mut self, element: T);
-
-    /// Removes the element from the top of the heap. Returns ```None``` if the heap is empty.
-    fn extract(&mut self) -> Option<T>;
-
-    /// Performs a linear search to find the index of ```element``` on the heap.
-    /// If ```element``` is found, then it will return its index on the heap.
-    /// Otherwise, it will return ```None```.
-    fn find(&self, element: &T) -> Option<usize>;
-
-    /// Updates the value of the ```element``` at ```index```.
-    /// Returns and error if the element is not found or the index is out of bounds.
-    fn update<F>(&mut self, index: usize, update_func: F) -> Result<()>
-    where
-        F: Fn(&mut T);
-
-    /// Removes and returns the element at ```index```.
-    /// Returns an error if the heap is empty or if the index is out of bounds.
-    fn remove(&mut self, index: usize) -> Result<T>;
-
-    /// Returns the number of elements in the heap, also referred to as its 'length'.
-    fn len(&self) -> usize;
-
-    /// Clears the heap, removing all elements.
-    /// Note that this method has no effect on the allocated capacity of the heap.
-    fn clear(&mut self);
-
-    /// Returns true if the heap contains no elements.
-    fn is_empty(&self) -> bool;
-}
+pub const MIN_HEAP: bool = false;
+pub const MAX_HEAP: bool = true;
 
 /// A complete binary tree in which the value of each node in the tree is
 /// less than the value of each of its children. As a consequence, the smallest
 /// value in the tree is always located at the root of the tree.
 #[derive(Debug, Clone)]
-pub struct MinHeap<T>
+pub struct Heap<T, const HEAP_TYPE: bool, const DIMENSIONS: usize = 2>
 where
     T: Ord + Eq + Copy,
 {
     heap: Vec<T>,
+    sort_order: Ordering,
 }
 
-impl<T> Default for MinHeap<T>
+impl<T, const HEAP_TYPE: bool, const DIMENSIONS: usize> From<&[T]> for Heap<T, HEAP_TYPE, DIMENSIONS>
 where
     T: Ord + Eq + Copy,
 {
-    fn default() -> Self {
-        Self { heap: Vec::new() }
+    fn from(arr: &[T]) -> Self {
+        let mut heap: Vec<T> = Vec::from(arr);
+        let sort_order: Ordering = if HEAP_TYPE { Ordering::Greater } else { Ordering::Less };
+        Self::heap_sort(&mut heap, sort_order);
+        Self { heap, sort_order }
     }
 }
 
-impl<T> MinHeap<T>
+impl<T, const HEAP_TYPE: bool, const DIMENSIONS: usize> Heap<T, HEAP_TYPE, DIMENSIONS>
 where
     T: Ord + Eq + Copy,
 {
-    /// Creates and returns a new empty minimum heap.
     pub fn new() -> Self {
-        Self { heap: Vec::new() }
+        Self {
+            heap: Vec::new(),
+            sort_order: if HEAP_TYPE == MAX_HEAP {
+                Ordering::Greater
+            } else {
+                Ordering::Less
+            },
+        }
     }
-}
 
-impl<T> Heap<T> for MinHeap<T>
-where
-    T: Ord + Eq + Copy,
-{
     /// Clears the heap, removing all elements.
     /// Note that this method has no effect on the allocated capacity of the heap.
-    #[inline]
-    fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.heap.clear()
     }
 
-    /// Returns the number of elements in the heap, also referred to as its 'length'.
-    #[inline]
-    fn len(&self) -> usize {
-        self.heap.len()
-    }
-
-    /// Removes the element from the top of the heap. Returns ```None``` if the heap is empty.
-    #[inline]
-    fn extract(&mut self) -> Option<T> {
-        extract(&mut self.heap, HeapType::MinHeap)
-    }
-
-    /// Performs a linear search to find the index of ```element``` on the heap.
-    /// If the element is found, then it will return its index on the heap.
-    /// Otherwise, it will return ```None```.
-    #[inline]
-    fn find(&self, element: &T) -> Option<usize> {
-        find(&self.heap, element)
-    }
-
-    /// Inserts an element into the heap.
-    #[inline]
-    fn insert(&mut self, element: T) {
-        insert(&mut self.heap, HeapType::MinHeap, element)
-    }
-
-    /// Returns true if the heap contains no elements.
-    #[inline]
-    fn is_empty(&self) -> bool {
-        self.heap.is_empty()
-    }
-
-    /// Removes and returns the element at ```index```.
-    /// Returns an error if the heap is empty or if the index is out of bounds.
-    #[inline]
-    fn remove(&mut self, index: usize) -> Result<T> {
-        remove(&mut self.heap, HeapType::MinHeap, index)
-    }
-
-    /// Updates the value of the ```element``` at ```index```.
-    /// Returns and error if the element is not found in the heap or the index is out of bounds.
-    #[inline]
-    fn update<F>(&mut self, index: usize, update_func: F) -> Result<()>
-    where
-        F: Fn(&mut T),
-    {
-        update(&mut self.heap, HeapType::MinHeap, index, update_func)
-    }
-}
-
-/// A complete binary tree in which the value of each node in the tree
-/// is greater than the value of each of its children. As a consequence,
-/// the largest value in the tree is always located at the root of the tree.
-#[derive(Debug, Clone)]
-pub struct MaxHeap<T>
-where
-    T: Ord + Eq + Copy,
-{
-    heap: Vec<T>,
-}
-
-impl<T> Default for MaxHeap<T>
-where
-    T: Ord + Eq + Copy,
-{
-    fn default() -> Self {
-        Self { heap: Vec::new() }
-    }
-}
-
-impl<T> MaxHeap<T>
-where
-    T: Ord + Eq + Copy,
-{
-    /// Creates and returns a new empty maximum heap.
-    pub fn new() -> Self {
-        Self { heap: Vec::new() }
-    }
-}
-
-impl<T> Heap<T> for MaxHeap<T>
-where
-    T: Ord + Eq + Copy,
-{
-    /// Clears the heap, removing all elements.
-    /// Note that this method has no effect on the allocated capacity of the heap.
-    #[inline]
-    fn clear(&mut self) {
-        self.heap.clear()
-    }
-
-    /// Returns the number of elements in the heap, also referred to as its 'length'.
-    #[inline]
-    fn len(&self) -> usize {
-        self.heap.len()
-    }
-
-    /// Removes the element from the top of the heap. Returns ```None``` if the heap is empty.
-    #[inline]
-    fn extract(&mut self) -> Option<T> {
-        extract(&mut self.heap, HeapType::MaxHeap)
-    }
-
-    /// Performs a linear search to find the index of ```element``` on the heap.
-    /// If the element is found, then it will return its index on the heap.
-    /// Otherwise, it will return ```None```.
-    #[inline]
-    fn find(&self, element: &T) -> Option<usize> {
-        find(&self.heap, element)
+    /// Performs a linear search to find the index of an element on the heap.
+    /// Returns *None* if the element was not found.
+    ///
+    /// ## Example:
+    ///
+    /// ```
+    /// use rheap::{Heap, MIN_HEAP};
+    ///
+    /// let mut v: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
+    /// let mut heap: Heap<usize, MIN_HEAP, 2> = Heap::from(&v[..]);
+    ///
+    /// if let Some(index) = heap.find(&6) {
+    ///     assert!(index == 3);
+    /// } else {
+    ///     panic!();
+    /// }
+    /// ```
+    pub fn find(&self, element: &T) -> Option<usize> {
+        (0..self.heap.len()).find(|&i| self.heap[i] == *element)
     }
 
     /// Inserts an element into the heap.
-    #[inline]
-    fn insert(&mut self, element: T) {
-        insert(&mut self.heap, HeapType::MaxHeap, element)
+    ///
+    /// ## Example:
+    ///
+    /// ```
+    /// use rheap::{Heap, MIN_HEAP};
+    /// use std::cmp::Ordering;
+    ///
+    /// let mut v: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
+    /// let mut heap: Heap<usize, MIN_HEAP, 2> = Heap::from(&v[..]);
+    /// println!("{:?}", heap);
+    /// heap.insert(5);
+    /// if let Some(x) = heap.peek() {
+    ///     assert!(*x == 0)
+    /// } else {
+    ///     panic!()
+    /// }
+    /// ```
+    pub fn insert(&mut self, element: T) {
+        let index: usize = self.heap.len();
+        self.heap.push(element);
+        Self::sort_up(&mut self.heap, self.sort_order, index)
     }
 
     /// Returns true if the heap contains no elements.
-    #[inline]
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.heap.is_empty()
     }
 
-    /// Removes and returns the element at ```index```.
-    /// Returns an error if the heap is empty or if the index is out of bounds.
-    #[inline]
-    fn remove(&mut self, index: usize) -> Result<T> {
-        remove(&mut self.heap, HeapType::MaxHeap, index)
+    /// Returns the number of elements in the heap, also referred to as its 'length'.
+    pub fn len(&self) -> usize {
+        self.heap.len()
     }
 
-    /// Updates the value of the ```element``` at ```index```.
+    /// Returns a reference to the element on top of the heap without removing it.
+    pub fn peek(&self) -> Option<&T> {
+        if self.heap.is_empty() {
+            None
+        } else {
+            Some(&self.heap[0])
+        }
+    }
+
+    /// Removes and returns the element at *index*.
+    /// Returns an error if the heap is empty or if the index is out of bounds.
+    ///
+    /// ## Example:
+    ///
+    /// ```
+    /// use rheap::{Heap, MIN_HEAP};
+    /// use std::cmp::Ordering;
+    ///
+    /// let mut v: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
+    /// let mut heap: Heap<usize, MIN_HEAP, 2> = Heap::from(&v[..]);
+    /// if let Ok(old_element) = heap.remove(3) {
+    ///     assert!(old_element == 6);
+    /// } else {
+    ///     panic!();
+    /// }
+    /// ```
+    pub fn remove(&mut self, index: usize) -> Result<T> {
+        if self.heap.is_empty() {
+            Err(Error::new(
+                ErrorKind::EmptyHeap,
+                "Can not remove elements from an empty heap.",
+            ))
+        } else if index >= self.heap.len() {
+            Err(Error::new(
+                ErrorKind::InvalidIndex,
+                "Index is beyond the end of the heap.",
+            ))
+        } else {
+            let removed: T = self.heap.swap_remove(index);
+            if index < self.heap.len() {
+                if self.heap[index].cmp(&removed) == self.sort_order {
+                    Self::sort_up(&mut self.heap, self.sort_order, index);
+                } else {
+                    Self::sort_down(&mut self.heap, self.sort_order, index);
+                }
+            }
+            Ok(removed)
+        }
+    }
+
+    /// Removes and returns the element from the top of the heap. Returns *None* if the heap is empty.
+    ///
+    /// ## Example:
+    ///
+    /// ```
+    /// use rheap::{Heap, MIN_HEAP};
+    /// use std::cmp::Ordering;
+    ///
+    /// let mut v: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
+    /// let mut heap: Heap<usize, MIN_HEAP, 2> = Heap::from(&v[..]);
+    /// if let Some(smallest) = heap.top() {
+    ///     assert!(smallest == 0);
+    /// } else {
+    ///     panic!();
+    /// }
+    /// ```
+    pub fn top(&mut self) -> Option<T> {
+        self.remove(0).ok()
+    }
+
+    /// Updates the value of the element at *index*.
     /// Returns and error if the element is not found in the heap or the index is out of bounds.
+    ///
+    /// ## Example:
+    ///
+    /// ```
+    /// use rheap::{Heap, MIN_HEAP};
+    /// use std::cmp::Ordering;
+    ///
+    /// let mut v: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
+    /// let mut heap: Heap<usize, MIN_HEAP> = Heap::from(&v[..]);
+    /// if heap.update(3, |x| *x = 11).is_err() {
+    ///     panic!();
+    /// }
+    /// ```
     #[inline]
-    fn update<F>(&mut self, index: usize, update_func: F) -> Result<()>
+    pub fn update<F>(&mut self, index: usize, update_func: F) -> Result<()>
     where
         F: Fn(&mut T),
     {
-        update(&mut self.heap, HeapType::MaxHeap, index, update_func)
+        if self.heap.is_empty() {
+            Err(Error::new(
+                ErrorKind::EmptyHeap,
+                "Can not remove elements from an empty heap.",
+            ))
+        } else if index >= self.heap.len() {
+            Err(Error::new(
+                ErrorKind::InvalidIndex,
+                "Index is beyond the end of the heap.",
+            ))
+        } else {
+            update_func(&mut self.heap[index]);
+            if index == 0 || self.heap[index].cmp(&self.heap[(index - 1) / DIMENSIONS]) != self.sort_order {
+                Self::sort_down(&mut self.heap, self.sort_order, index);
+            } else {
+                Self::sort_up(&mut self.heap, self.sort_order, index);
+            }
+            Ok(())
+        }
+    }
+
+    /// Sorts the heap by iterating down the tree starting at *index*.
+    ///
+    /// ## Panics:
+    ///
+    /// Panics if *index* is out of bounds.
+    ///
+    /// ## Example:
+    ///
+    /// ```
+    /// use rheap::{Heap, MIN_HEAP};
+    /// use std::cmp::Ordering;
+    ///
+    /// let mut heap: Vec<usize> = vec![0, 1, 2, 3, 4, 5];
+    /// let index: usize = 0;
+    /// // remove the element located at index
+    /// heap.swap_remove(index);
+    /// Heap::<usize, MIN_HEAP>::sort_down(&mut heap, Ordering::Less, index);
+    /// assert!(heap[0] == 1);
+    /// ```
+    pub fn sort_down(heap: &mut [T], sort_order: Ordering, mut index: usize)
+    where
+        T: Ord,
+    {
+        let length: usize = heap.len();
+        loop {
+            let first_child: usize = (index * DIMENSIONS) + 1;
+            let last_child: usize = first_child + DIMENSIONS;
+            let mut priority: usize = index;
+            for i in first_child..last_child.min(length) {
+                priority = if heap[priority].cmp(&heap[i]) == sort_order {
+                    priority
+                } else {
+                    i
+                }
+            }
+            if priority == index {
+                break;
+            }
+            heap.swap(priority, index);
+            index = priority
+        }
+    }
+
+    /// Sorts the heap by iterating up the tree starting at *index*.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if *index* is out of bounds.
+    ///
+    /// ## Example:
+    ///
+    /// ```
+    /// use rheap::{Heap, MIN_HEAP};
+    /// use std::cmp::Ordering;
+    ///
+    /// let mut heap: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
+    /// let index: usize = heap.len();
+    /// heap.push(5);
+    /// Heap::<usize, MIN_HEAP>::sort_up(&mut heap, Ordering::Less, index);
+    /// assert!(heap[0] == 0);
+    /// ```
+    pub fn sort_up(heap: &mut [T], sort_order: Ordering, mut index: usize)
+    where
+        T: Ord,
+    {
+        while index > 0 {
+            let p: usize = (index - 1) / DIMENSIONS; // calculate the index of the parent node
+            if heap[index].cmp(&heap[p]) == sort_order {
+                heap.swap(index, p); // if the child is smaller than the parent, then swap them
+            } else {
+                break;
+            }
+            index = p;
+        }
+    }
+
+    /// Performs an in-place heap sort.
+    ///
+    /// ## Example:
+    ///
+    /// ```
+    /// use rheap::{Heap, MIN_HEAP};
+    /// use std::cmp::Ordering;
+    ///
+    /// let mut heap: Vec<usize> = vec![8, 66, 9, 55, 7, 0, 14, 6, 37, 2];
+    /// Heap::<usize, MIN_HEAP>::heap_sort(&mut heap, Ordering::Less);
+    /// assert!(heap[0] == 0);
+    /// ```
+    pub fn heap_sort(heap: &mut [T], sort_order: Ordering)
+    where
+        T: Ord,
+    {
+        let len: usize = heap.len();
+        if len > 1 {
+            let parent: usize = (len - 2) / DIMENSIONS;
+            for index in (0..=parent).rev() {
+                Self::sort_down(heap, sort_order, index);
+            }
+        }
+    }
+
+    #[doc(hidden)]
+    pub fn is_valid(&self) -> bool {
+        if self.sort_order == Ordering::Less {
+            for i in 1..self.heap.len() {
+                if self.heap[0] >= self.heap[i] {
+                    return false;
+                }
+            }
+        } else {
+            for i in 1..self.heap.len() {
+                if self.heap[0] <= self.heap[i] {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }

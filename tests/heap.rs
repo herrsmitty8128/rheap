@@ -1,91 +1,65 @@
 #[cfg(test)]
 pub mod test {
 
-    use rand::prelude::*;
-    use rheap::{extract, find, heap_sort, insert, remove, update, HeapType};
 
-    const COUNT: usize = 10000;
+    use rand::prelude::*;
+    use rheap::{Heap, MIN_HEAP, MAX_HEAP};
+
+    const COUNT: usize = 5000;
 
     #[test]
     pub fn test_min_heap() {
-        test_heap(HeapType::MinHeap);
+        test_heap::<4, MIN_HEAP>();
     }
 
     #[test]
     pub fn test_max_heap() {
-        test_heap(HeapType::MaxHeap);
+        test_heap::<4, MAX_HEAP>();
     }
 
-    pub fn top_has_correct_value(heap: &Vec<usize>, heap_type: HeapType) -> bool {
-        if heap_type == HeapType::MinHeap {
-            for i in 1..heap.len() {
-                if heap[0] >= heap[i] {
-                    return false;
-                }
-            }
-        } else {
-            for i in 1..heap.len() {
-                if heap[0] <= heap[i] {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
+    pub fn test_heap<const D: usize, const H: bool>() {
+        let mut v: Vec<usize> = vec![0; COUNT];
 
-    pub fn test_heap(heap_type: HeapType) {
-        let mut heap: Vec<usize> = vec![0; COUNT];
+        rand::thread_rng().fill(&mut v[..]);
 
-        rand::thread_rng().fill(&mut heap[..]);
+        let mut heap: Heap<usize, H, D> = Heap::from(&v[..]);
 
-        heap_sort(&mut heap, heap_type);
-
-        assert!(top_has_correct_value(&heap, heap_type));
+        assert!(heap.is_valid());
 
         while !heap.is_empty() {
-            extract(&mut heap, heap_type);
-            assert!(top_has_correct_value(&heap, heap_type));
+            heap.top();
+            assert!(heap.is_valid(), "heap.top() failed");
         }
 
         for _ in 0..COUNT {
-            insert(&mut heap, heap_type, rand::random::<usize>());
-            assert!(top_has_correct_value(&heap, heap_type));
+            heap.insert(rand::random::<usize>());
+            assert!(heap.is_valid(), "heap.insert() failed");
         }
 
         while !heap.is_empty() {
             let len: usize = heap.len();
-            if remove(&mut heap, heap_type, rand::thread_rng().gen_range(0..len)).is_err() {
+            if heap.remove(rand::thread_rng().gen_range(0..len)).is_err() {
                 panic!();
             }
-            assert!(top_has_correct_value(&heap, heap_type));
+            assert!(heap.is_valid(), "heap.remove() failed");
         }
 
-        heap.resize_with(COUNT, || rand::random::<usize>());
-        heap_sort(&mut heap, heap_type);
-        assert!(top_has_correct_value(&heap, heap_type));
+        for _ in 0..COUNT {
+            heap.insert(rand::random::<usize>());
+            assert!(heap.is_valid(), "heap.insert() failed");
+        }
 
         for _ in 0..COUNT {
             let len: usize = heap.len();
-            if update(
-                &mut heap,
-                heap_type,
-                rand::thread_rng().gen_range(0..len),
-                |x| *x = rand::random::<usize>(),
-            )
-            .is_err()
+            if heap
+                .update(rand::thread_rng().gen_range(0..len), |x| {
+                    *x = rand::random::<usize>()
+                })
+                .is_err()
             {
                 panic!();
             }
-            assert!(top_has_correct_value(&heap, heap_type));
-        }
-
-        for _ in 0..COUNT {
-            let len: usize = heap.len();
-            let i: usize = rand::thread_rng().gen_range(0..len);
-            let element: usize = heap[i];
-            if find(&heap, &element).is_none() {
-                panic!()
-            }
+            assert!(heap.is_valid(), "heap.update() failed");
         }
 
         let mut prev_choice: usize = usize::MAX;
@@ -97,19 +71,17 @@ pub mod test {
                 0 => {
                     // insert
                     let n = rand::random::<usize>();
-                    insert(&mut heap, heap_type, n);
+                    heap.insert(n);
                 }
                 1 => {
                     // extract
-                    extract(&mut heap, heap_type);
+                    heap.top();
                 }
                 2 => {
                     // remove
                     if !heap.is_empty() {
                         let len: usize = heap.len();
-                        if remove(&mut heap, heap_type, rand::thread_rng().gen_range(0..len))
-                            .is_err()
-                        {
+                        if heap.remove(rand::thread_rng().gen_range(0..len)).is_err() {
                             panic!()
                         }
                     }
@@ -117,21 +89,21 @@ pub mod test {
                 _ => {
                     // update
                     let len: usize = heap.len();
-                    if update(
-                        &mut heap,
-                        heap_type,
-                        rand::thread_rng().gen_range(0..len),
-                        |x| *x = rand::random::<usize>(),
-                    )
-                    .is_err()
-                    {
-                        panic!();
+                    if !heap.is_empty() {
+                        if heap
+                            .update(rand::thread_rng().gen_range(0..len), |x| {
+                                *x = rand::random::<usize>()
+                            })
+                            .is_err()
+                        {
+                            panic!("heap.update() returned an error");
+                        }
                     }
                 }
             }
 
             assert!(
-                top_has_correct_value(&heap, heap_type),
+                heap.is_valid(),
                 "### Your choice of {} was a bad one. prev_choice = {} ###",
                 choice,
                 prev_choice
