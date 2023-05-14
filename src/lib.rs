@@ -83,7 +83,7 @@ where
     pub fn new() -> Self {
         Self {
             heap: Vec::new(),
-            sort_order: if MAX_HEAP == MAX_HEAP {
+            sort_order: if MAX_HEAP {
                 Ordering::Greater
             } else {
                 Ordering::Less
