@@ -60,18 +60,6 @@ where
     sort_order: Ordering,
 }
 
-impl<T, const MAX_HEAP: bool, const BRANCHES: usize> Display for Heap<T, MAX_HEAP, BRANCHES>
-where
-    T: Ord + Eq + Copy + Display,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for i in 0..self.heap.len() {
-            f.write_fmt(format_args!("{}\n", &self.heap[i]))?;
-        }
-        f.write_str("\n")
-    }
-}
-
 impl<T, const MAX_HEAP: bool, const BRANCHES: usize> From<&[T]> for Heap<T, MAX_HEAP, BRANCHES>
 where
     T: Ord + Eq + Copy + Display,
@@ -427,7 +415,8 @@ where
         }
     }
 
-    /// This function is intended for use during testing.
+    /// Returns true if the correct value is on top of the heap.
+    /// Please note that this function is intended for use during testing.
     ///
     /// ## Example:
     ///
