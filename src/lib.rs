@@ -52,17 +52,29 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// less than the value of each of its children. As a consequence, the smallest
 /// value in the tree is always located at the root of the tree.
 #[derive(Debug, Clone)]
-pub struct Heap<T, const MAX_HEAP: bool, const BRANCHES: usize = 2>
+pub struct Heap<T, const MAX_HEAP: bool, const BRANCHES: usize>
 where
-    T: Ord + Eq + Copy,
+    T: Ord + Eq + Copy + Display,
 {
     heap: Vec<T>,
     sort_order: Ordering,
 }
 
+impl<T, const MAX_HEAP: bool, const BRANCHES: usize> Display for Heap<T, MAX_HEAP, BRANCHES>
+where
+    T: Ord + Eq + Copy + Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for i in 0..self.heap.len() {
+            f.write_fmt(format_args!("{}\n", &self.heap[i]))?;
+        }
+        f.write_str("\n")
+    }
+}
+
 impl<T, const MAX_HEAP: bool, const BRANCHES: usize> From<&[T]> for Heap<T, MAX_HEAP, BRANCHES>
 where
-    T: Ord + Eq + Copy,
+    T: Ord + Eq + Copy + Display,
 {
     /// Builds a new Heap object from a slice of type T by cloning the elements in the slice.
     /// 
@@ -79,8 +91,8 @@ where
     /// assert!(heap.sort_order() == Ordering::Less);
     /// 
     /// let mut heap: Heap<usize, true, 2> = Heap::from(&v[..]);
-    /// assert!(heap.sort_order() == Ordering::Greater);
     /// assert!(heap.is_valid());
+    /// assert!(heap.sort_order() == Ordering::Greater);
     /// 
     /// assert!(heap.len() == v.len())
     /// ```
@@ -91,14 +103,14 @@ where
         } else {
             Ordering::Less
         };
-        Self::heap_sort(&mut heap, sort_order);
+        Heap::<T, MAX_HEAP, BRANCHES>::heap_sort(&mut heap[..]);
         Self { heap, sort_order }
     }
 }
 
 impl<T, const MAX_HEAP: bool, const BRANCHES: usize> Heap<T, MAX_HEAP, BRANCHES>
 where
-    T: Ord + Eq + Copy,
+    T: Ord + Eq + Copy + Display,
 {
     pub fn new() -> Self {
         Self {
@@ -133,6 +145,7 @@ where
     /// use rheap::Heap;
     ///
     /// let mut v: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
+    /// 
     /// let mut heap: Heap<usize, false, 2> = Heap::from(&v[..]);
     ///
     /// if let Some(index) = heap.find(&6) {
@@ -154,8 +167,11 @@ where
     /// use std::cmp::Ordering;
     ///
     /// let mut v: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
+    /// 
     /// let mut heap: Heap<usize, false, 2> = Heap::from(&v[..]);
+    /// 
     /// heap.insert(5);
+    /// 
     /// if let Some(x) = heap.peek() {
     ///     assert!(*x == 0)
     /// } else {
@@ -178,7 +194,7 @@ where
         self.heap.len()
     }
 
-    /// Returns a reference to the element on top of the heap without removing it.
+    /// Returns an immutable reference to the element on top of the heap without removing it or *None* if the heap is empty.
     pub fn peek(&self) -> Option<&T> {
         if self.heap.is_empty() {
             None
@@ -197,9 +213,12 @@ where
     /// use std::cmp::Ordering;
     ///
     /// let mut v: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
+    /// 
     /// let mut heap: Heap<usize, false, 2> = Heap::from(&v[..]);
+    /// 
     /// if let Ok(old_element) = heap.remove(3) {
     ///     assert!(old_element == 6);
+    ///     assert!(heap.is_valid());
     /// } else {
     ///     panic!("Heap.remove() returned an error.");
     /// }
@@ -247,7 +266,13 @@ where
     /// }
     /// ```
     pub fn top(&mut self) -> Option<T> {
-        self.remove(0).ok()
+        if self.heap.is_empty() {
+            None
+        } else {
+            let removed: T = self.heap.swap_remove(0);
+            Self::sort_down(&mut self.heap, self.sort_order, 0);
+            Some(removed)
+        }
     }
 
     /// Updates the value of the element at *index*.
@@ -260,7 +285,9 @@ where
     /// use std::cmp::Ordering;
     ///
     /// let mut v: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
-    /// let mut heap: Heap<usize, false> = Heap::from(&v[..]);
+    /// 
+    /// let mut heap: Heap<usize, false, 3> = Heap::from(&v[..]);
+    /// 
     /// if heap.update(3, |x| *x = 11).is_err() {
     ///     panic!();
     /// }
@@ -306,10 +333,11 @@ where
     /// use std::cmp::Ordering;
     ///
     /// let mut heap: Vec<usize> = vec![0, 1, 2, 3, 4, 5];
-    /// let index: usize = 0;
+    /// 
     /// // remove the element located at index 0
+    /// let index: usize = 0;
     /// heap.swap_remove(index);
-    /// Heap::<usize, false>::sort_down(&mut heap, Ordering::Less, index);
+    /// Heap::<usize, false, 3>::sort_down(&mut heap, Ordering::Less, index);
     /// assert!(heap[0] == 1);
     /// ```
     pub fn sort_down(heap: &mut [T], sort_order: Ordering, mut index: usize)
@@ -326,13 +354,13 @@ where
                     priority
                 } else {
                     i
-                }
+                };
             }
             if priority == index {
                 break;
             }
             heap.swap(priority, index);
-            index = priority
+            index = priority;
         }
     }
 
@@ -351,7 +379,7 @@ where
     /// let mut heap: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
     /// let index: usize = heap.len();
     /// heap.push(5);
-    /// Heap::<usize, false>::sort_up(&mut heap, Ordering::Less, index);
+    /// Heap::<usize, false, 3>::sort_up(&mut heap, Ordering::Less, index);
     /// assert!(heap[0] == 0);
     /// ```
     pub fn sort_up(heap: &mut [T], sort_order: Ordering, mut index: usize)
@@ -378,15 +406,20 @@ where
     /// use std::cmp::Ordering;
     ///
     /// let mut heap: Vec<usize> = vec![8, 66, 9, 55, 7, 0, 14, 6, 37, 2];
-    /// Heap::<usize, false>::heap_sort(&mut heap, Ordering::Less);
+    /// Heap::<usize, false, 3>::heap_sort(&mut heap);
     /// assert!(heap[0] == 0);
     /// ```
-    pub fn heap_sort(heap: &mut [T], sort_order: Ordering)
+    pub fn heap_sort(heap: &mut [T])
     where
         T: Ord,
     {
         let len: usize = heap.len();
         if len > 1 {
+            let sort_order: Ordering = if MAX_HEAP {
+                Ordering::Greater
+            } else {
+                Ordering::Less
+            };
             let parent: usize = (len - 2) / BRANCHES;
             for index in (0..=parent).rev() {
                 Self::sort_down(heap, sort_order, index);
@@ -403,7 +436,7 @@ where
     /// use std::cmp::Ordering;
     ///
     /// let mut v: Vec<usize> = Vec::new();
-    /// let mut heap: Heap<usize, false> = Heap::from(&v[..]);
+    /// let mut heap: Heap<usize, false, 3> = Heap::from(&v[..]);
     /// assert!(heap.is_valid());
     /// ```
     #[doc(hidden)]
