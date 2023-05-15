@@ -8,12 +8,12 @@ pub mod test {
 
     #[test]
     pub fn test_min_heap() {
-        test_heap::<2, false>();
+        test_heap::<8, false>();
     }
 
     #[test]
     pub fn test_max_heap() {
-        test_heap::<2, true>();
+        test_heap::<8, true>();
     }
 
     pub fn test_heap<const D: usize, const H: bool>() {

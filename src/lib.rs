@@ -64,8 +64,28 @@ impl<T, const MAX_HEAP: bool, const BRANCHES: usize> From<&[T]> for Heap<T, MAX_
 where
     T: Ord + Eq + Copy,
 {
-    fn from(arr: &[T]) -> Self {
-        let mut heap: Vec<T> = Vec::from(arr);
+    /// Builds a new Heap object from a slice of type T by cloning the elements in the slice.
+    /// 
+    /// ## Example:
+    /// 
+    /// ```
+    /// use rheap::Heap;
+    /// use std::cmp::Ordering;
+    /// 
+    /// let mut v: Vec<usize> = vec![11, 6, 8, 5, 9, 1, 4, 2, 2, 2, 3, 4, 23, 2, 0, 77];
+    /// 
+    /// let mut heap: Heap<usize, false, 2> = Heap::from(&v[..]);
+    /// assert!(heap.is_valid());
+    /// assert!(heap.sort_order() == Ordering::Less);
+    /// 
+    /// let mut heap: Heap<usize, true, 2> = Heap::from(&v[..]);
+    /// assert!(heap.sort_order() == Ordering::Greater);
+    /// assert!(heap.is_valid());
+    /// 
+    /// assert!(heap.len() == v.len())
+    /// ```
+    fn from(s: &[T]) -> Self {
+        let mut heap: Vec<T> = Vec::from(s);
         let sort_order: Ordering = if MAX_HEAP {
             Ordering::Greater
         } else {
@@ -91,6 +111,13 @@ where
         }
     }
 
+    /// Returns the sort order of the heap.
+    /// *Ordering::Greater* indicates a maximum heap.
+    /// *Ordering::Less* indicates a minimum heap.
+    pub fn sort_order(&self) -> Ordering {
+        self.sort_order
+    }
+
     /// Clears the heap, removing all elements.
     /// Note that this method has no effect on the allocated capacity of the heap.
     pub fn clear(&mut self) {
@@ -111,7 +138,7 @@ where
     /// if let Some(index) = heap.find(&6) {
     ///     assert!(index == 3);
     /// } else {
-    ///     panic!();
+    ///     panic!("Did not find the number 6.");
     /// }
     /// ```
     pub fn find(&self, element: &T) -> Option<usize> {
@@ -128,12 +155,11 @@ where
     ///
     /// let mut v: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
     /// let mut heap: Heap<usize, false, 2> = Heap::from(&v[..]);
-    /// println!("{:?}", heap);
     /// heap.insert(5);
     /// if let Some(x) = heap.peek() {
     ///     assert!(*x == 0)
     /// } else {
-    ///     panic!()
+    ///     panic!("heap.peek() returned None.")
     /// }
     /// ```
     pub fn insert(&mut self, element: T) {
@@ -175,7 +201,7 @@ where
     /// if let Ok(old_element) = heap.remove(3) {
     ///     assert!(old_element == 6);
     /// } else {
-    ///     panic!();
+    ///     panic!("Heap.remove() returned an error.");
     /// }
     /// ```
     pub fn remove(&mut self, index: usize) -> Result<T> {
@@ -211,7 +237,9 @@ where
     /// use std::cmp::Ordering;
     ///
     /// let mut v: Vec<usize> = vec![0, 2, 4, 6, 8, 10];
+    /// 
     /// let mut heap: Heap<usize, false, 2> = Heap::from(&v[..]);
+    /// 
     /// if let Some(smallest) = heap.top() {
     ///     assert!(smallest == 0);
     /// } else {
@@ -279,7 +307,7 @@ where
     ///
     /// let mut heap: Vec<usize> = vec![0, 1, 2, 3, 4, 5];
     /// let index: usize = 0;
-    /// // remove the element located at index
+    /// // remove the element located at index 0
     /// heap.swap_remove(index);
     /// Heap::<usize, false>::sort_down(&mut heap, Ordering::Less, index);
     /// assert!(heap[0] == 1);
@@ -381,7 +409,7 @@ where
     #[doc(hidden)]
     pub fn is_valid(&self) -> bool {
         for i in 1..self.heap.len() {
-            if self.heap[0].cmp(&self.heap[i]) != self.sort_order {
+            if self.heap[i].cmp(&self.heap[0]) == self.sort_order {
                 return false;
             }
         }
