@@ -175,7 +175,8 @@ where
 
     /// Moves all the elements of other into self, leaving other empty.
     pub fn append(&mut self, other: &mut Self) {
-        self.heap.append(&mut other.heap)
+        self.heap.append(&mut other.heap);
+        Self::heap_sort(&mut self.heap);
     }
 
     /// Returns the number of elements the heap can hold without reallocating.
@@ -380,9 +381,11 @@ where
     /// if heap.update(3, |x| *x = 11).is_err() {
     ///     panic!();
     /// }
+    /// 
+    /// assert!(heap.is_valid());
     /// ```
     #[inline]
-    pub fn update<F>(&mut self, index: usize, update_func: F) -> Result<()>
+    pub fn update<F>(&mut self, index: usize, modifier: F) -> Result<()>
     where
         F: Fn(&mut T),
     {
@@ -397,7 +400,7 @@ where
                 "Index is beyond the end of the heap.",
             ))
         } else {
-            update_func(&mut self.heap[index]);
+            modifier(&mut self.heap[index]);
             if index == 0
                 || self.heap[index].cmp(&self.heap[(index - 1) / BRANCHES]) != self.sort_order
             {
