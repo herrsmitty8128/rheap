@@ -2,8 +2,27 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE.txt or http://www.opensource.org/licenses/mit-license.php.
 
+/*!
+ * A complete binary tree in which the value of each node in the tree is either
+ * less than (in the case of a minimum heap) or greater than (in the case of a
+ * maximum heap) the value of each of its children. As a consequence, either the
+ * smallest or largest value in the tree is always located at the root of the tree.
+ * 
+ * It supports:
+ * 
+ * - Maximum heaps
+ * - Minimum heaps, without relying on ```core::cmp::Reverse``` or a custom ```Ord``` implementation
+ * - Binary and d-way heaps. Any number of branches up to (usize::MAX - 1) / d is allowed, so use good judgement!
+ *  
+ * Use the ```update``` method to modify the value of an element on the heap in such
+ * a way that the element's ordering relative to other elements is changed. Modifying 
+ * an element's value through other means may result in a inconsistencies, logic errors,
+ * panics, or other unintended consequences.
+*/
+
 use std::cmp::{Ord, Ordering};
 use std::fmt::Display;
+use std::ops::RangeBounds;
 
 /// An enum containing the types of errors that a heap might encounter.
 #[derive(Debug, Copy, Clone)]
@@ -48,13 +67,38 @@ impl std::error::Error for Error {}
 /// A specialized result type to make error handling simpler.
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// A complete binary tree in which the value of each node in the tree is
-/// less than the value of each of its children. As a consequence, the smallest
-/// value in the tree is always located at the root of the tree.
+/// A minimum heap with branching factor of 2.
+pub type BinaryMinHeap<T> = Heap<T, false, 2>;
+
+/// A maximum heap with branching factor of 2.
+pub type BinaryMaxHeap<T> = Heap<T, true, 2>;
+
+/// A minimum heap with branching factor of 3.
+pub type TernaryMinHeap<T> = Heap<T, false, 3>;
+
+/// A maximum heap with branching factor of 3.
+pub type TernaryMaxHeap<T> = Heap<T, true, 3>;
+
+/// A minimum heap with branching factor of 4.
+pub type QuaternaryMinHeap<T> = Heap<T, false, 4>;
+
+/// A maximum heap with branching factor of 4.
+pub type QuaternaryMaxHeap<T> = Heap<T, true, 4>;
+
+/// A minimum heap with branching factor of 5.
+pub type QuinaryMinHeap<T> = Heap<T, false, 5>;
+
+/// A maximum heap with branching factor of 5.
+pub type QuinaryMaxHeap<T> = Heap<T, true, 5>;
+
+/// A complete binary tree in which the value of each node in the tree is either
+/// less than (in the case of a minimum heap) or greater than (in the case of a
+/// maximum heap) the value of each of its children. As a consequence, either the
+/// smallest or largest value in the tree is always located at the root of the tree.
 #[derive(Debug, Clone)]
 pub struct Heap<T, const MAX_HEAP: bool, const BRANCHES: usize>
 where
-    T: Ord + Eq + Copy + Display,
+    T: Ord + Eq + Copy,
 {
     heap: Vec<T>,
     sort_order: Ordering,
@@ -62,7 +106,7 @@ where
 
 impl<T, const MAX_HEAP: bool, const BRANCHES: usize> From<&[T]> for Heap<T, MAX_HEAP, BRANCHES>
 where
-    T: Ord + Eq + Copy + Display,
+    T: Ord + Eq + Copy,
 {
     /// Builds a new Heap object from a slice of type T by cloning the elements in the slice.
     /// 
@@ -98,8 +142,10 @@ where
 
 impl<T, const MAX_HEAP: bool, const BRANCHES: usize> Heap<T, MAX_HEAP, BRANCHES>
 where
-    T: Ord + Eq + Copy + Display,
+    T: Ord + Eq + Copy,
 {
+    /// Constructs a new, empty heap.
+    /// The new heap will allocate memory as elements are inserted.
     pub fn new() -> Self {
         Self {
             heap: Vec::new(),
@@ -109,6 +155,61 @@ where
                 Ordering::Less
             },
         }
+    }
+
+    /// Constructs a new, empty heap with at least the specified capacity.
+    /// The heap will be able to hold at least capacity elements without reallocating. This method is allowed to allocate for more elements than capacity. If capacity is 0, the heap will not allocate.
+    /// It is important to note that although the returned heap has the minimum capacity specified, the heap will have a zero length.
+    /// If it is important to know the exact allocated capacity of a heap, always use the [capacity] method after construction.
+    /// For heap where T is a zero-sized type, there will be no allocation and the capacity will always be usize::MAX
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            heap: Vec::with_capacity(capacity),
+            sort_order: if MAX_HEAP {
+                Ordering::Greater
+            } else {
+                Ordering::Less
+            },
+        }
+    }
+
+    /// Moves all the elements of other into self, leaving other empty.
+    pub fn append(&mut self, other: &mut Self) {
+        self.heap.append(&mut other.heap)
+    }
+
+    /// Returns the number of elements the heap can hold without reallocating.
+    pub fn capacity(&self) -> usize {
+        self.heap.capacity()
+    }
+
+    /// Returns a slice containing the entire underlying vector.
+    pub fn as_slice(&self) -> &[T] {
+        self.heap.as_slice()
+    }
+
+    /// Returns an iterator over the slice.
+    /// The iterator yields all items from start to end.
+    pub fn iter(&self) -> std::slice::Iter<'_, T> {
+        self.heap.iter()
+    }
+
+    /// Shortens the vector, keeping the first *len* elements and dropping the rest.
+    /// If len is greater than the vector's current length, this has no effect.
+    /// The [drain] method can emulate truncate, but causes the excess elements to be returned instead of dropped.
+    /// Note that this method has no effect on the allocated capacity of the vector.
+    pub fn truncate(&mut self, len: usize) {
+        self.heap.truncate(len)
+    }
+
+    /// Removes the specified range from the heap in bulk, returning all removed elements as an iterator.
+    /// If the iterator is dropped before being fully consumed, it drops the remaining removed elements.
+    /// The returned iterator keeps a mutable borrow on the vector to optimize its implementation.
+    pub fn drain<R>(&mut self, range: R) -> std::vec::Drain<'_, T>
+    where
+        R: RangeBounds<usize>,
+    {
+        self.heap.drain(range)
     }
 
     /// Returns the sort order of the heap.
@@ -124,7 +225,7 @@ where
         self.heap.clear()
     }
 
-    /// Performs a linear search to find the index of an element on the heap.
+    /// Performs a linear search (in O(n) time) to find the index of an element on the heap.
     /// Returns *None* if the element was not found.
     ///
     /// ## Example:
@@ -263,7 +364,7 @@ where
         }
     }
 
-    /// Updates the value of the element at *index*.
+    /// Updates the value (or "priority") of the element at *index*.
     /// Returns and error if the element is not found in the heap or the index is out of bounds.
     ///
     /// ## Example:
