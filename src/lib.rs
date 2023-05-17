@@ -3,10 +3,7 @@
 // file LICENSE.txt or http://www.opensource.org/licenses/mit-license.php.
 
 /*!
- * A complete binary tree in which the value of each node in the tree is either
- * less than (in the case of a minimum heap) or greater than (in the case of a
- * maximum heap) the value of each of its children. As a consequence, either the
- * smallest or largest value in the tree is always located at the root of the tree.
+ * `rheap` is a Rust library containing an implementation of a minimum, maximum, d-way heap.
  * 
  * It supports:
  * 
