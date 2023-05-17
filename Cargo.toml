@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 description = "A library containing an implementation of a minimum, maximum, d-way heap."
+documentation = "https://docs.rs/rheap"
+repository = "https://github.com/herrsmitty8128/rheap"
+authors = ["herrsmitty8128"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
