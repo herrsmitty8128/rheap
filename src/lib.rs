@@ -11,10 +11,10 @@
  * It supports:
  * 
  * - Maximum heaps
- * - Minimum heaps, without relying on ```core::cmp::Reverse``` or a custom ```Ord``` implementation
- * - Binary and d-way heaps. Any number of branches up to (usize::MAX - 1) / d is allowed, so use good judgement!
+ * - Minimum heaps, without relying on [`core::cmp::Reverse`] or a custom [`std::cmp::Ord`] implementation
+ * - Binary and d-way heaps. Any number of branches up to (usize::MAX - 1) / d are allowed, so use good judgement!
  *  
- * Use the ```update``` method to modify the value of an element on the heap in such
+ * Use the [`Heap::update`] method to modify the value of an element on the heap in such
  * a way that the element's ordering relative to other elements is changed. Modifying 
  * an element's value through other means may result in a inconsistencies, logic errors,
  * panics, or other unintended consequences.
@@ -22,7 +22,6 @@
 
 use std::cmp::{Ord, Ordering};
 use std::fmt::Display;
-use std::ops::RangeBounds;
 
 /// An enum containing the types of errors that a heap might encounter.
 #[derive(Debug, Copy, Clone)]
@@ -158,10 +157,12 @@ where
     }
 
     /// Constructs a new, empty heap with at least the specified capacity.
-    /// The heap will be able to hold at least capacity elements without reallocating. This method is allowed to allocate for more elements than capacity. If capacity is 0, the heap will not allocate.
+    /// The heap will be able to hold at least capacity elements without reallocating. 
+    /// This method is allowed to allocate for more elements than capacity. 
+    /// If capacity is 0, the heap will not allocate.
     /// It is important to note that although the returned heap has the minimum capacity specified, the heap will have a zero length.
-    /// If it is important to know the exact allocated capacity of a heap, always use the [capacity] method after construction.
-    /// For heap where T is a zero-sized type, there will be no allocation and the capacity will always be usize::MAX
+    /// If it is important to know the exact allocated capacity of a heap, always use the [`Heap::capacity`] method after construction.
+    /// For heap where T is a zero-sized type, there will be no allocation and the capacity will always be [`usize::MAX`].
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             heap: Vec::with_capacity(capacity),
@@ -195,27 +196,16 @@ where
         self.heap.iter()
     }
 
-    /// Shortens the vector, keeping the first *len* elements and dropping the rest.
+    /// Shortens the vector, keeping the first `len` elements and dropping the rest.
     /// If len is greater than the vector's current length, this has no effect.
-    /// The [drain] method can emulate truncate, but causes the excess elements to be returned instead of dropped.
     /// Note that this method has no effect on the allocated capacity of the vector.
     pub fn truncate(&mut self, len: usize) {
         self.heap.truncate(len)
     }
 
-    /// Removes the specified range from the heap in bulk, returning all removed elements as an iterator.
-    /// If the iterator is dropped before being fully consumed, it drops the remaining removed elements.
-    /// The returned iterator keeps a mutable borrow on the vector to optimize its implementation.
-    pub fn drain<R>(&mut self, range: R) -> std::vec::Drain<'_, T>
-    where
-        R: RangeBounds<usize>,
-    {
-        self.heap.drain(range)
-    }
-
     /// Returns the sort order of the heap.
-    /// *Ordering::Greater* indicates a maximum heap.
-    /// *Ordering::Less* indicates a minimum heap.
+    /// `Ordering::Greater` indicates a maximum heap.
+    /// `Ordering::Less` indicates a minimum heap.
     pub fn sort_order(&self) -> Ordering {
         self.sort_order
     }
@@ -227,7 +217,7 @@ where
     }
 
     /// Performs a linear search (in O(n) time) to find the index of an element on the heap.
-    /// Returns *None* if the element was not found.
+    /// Returns `None` if the element was not found.
     ///
     /// ## Example:
     ///
@@ -284,7 +274,7 @@ where
         self.heap.len()
     }
 
-    /// Returns an immutable reference to the element on top of the heap without removing it or *None* if the heap is empty.
+    /// Returns an immutable reference to the element on top of the heap without removing it or `None` if the heap is empty.
     pub fn peek(&self) -> Option<&T> {
         if self.heap.is_empty() {
             None
@@ -293,7 +283,7 @@ where
         }
     }
 
-    /// Removes and returns the element at *index*.
+    /// Removes and returns the element at `index`.
     /// Returns an error if the heap is empty or if the index is out of bounds.
     ///
     /// ## Example:
@@ -337,7 +327,7 @@ where
         }
     }
 
-    /// Removes and returns the element from the top of the heap. Returns *None* if the heap is empty.
+    /// Removes and returns the element from the top of the heap. Returns `None` if the heap is empty.
     ///
     /// ## Example:
     ///
@@ -365,8 +355,8 @@ where
         }
     }
 
-    /// Updates the value (or "priority") of the element at *index*.
-    /// Returns and error if the element is not found in the heap or the index is out of bounds.
+    /// Updates the value (or "priority") of the element at `index`.
+    /// Returns an error if the element is not found in the heap or the index is out of bounds.
     ///
     /// ## Example:
     ///
@@ -412,11 +402,11 @@ where
         }
     }
 
-    /// Sorts the heap by iterating down the tree starting at *index*.
+    /// Sorts the heap by iterating down the tree starting at `index`.
     ///
     /// ## Panics:
     ///
-    /// Panics if *index* is out of bounds.
+    /// Panics if `index` is out of bounds.
     ///
     /// ## Example:
     ///
@@ -456,11 +446,11 @@ where
         }
     }
 
-    /// Sorts the heap by iterating up the tree starting at *index*.
+    /// Sorts the heap by iterating up the tree starting at `index`.
     ///
     /// ## Panics
     ///
-    /// Panics if *index* is out of bounds.
+    /// Panics if `index` is out of bounds.
     ///
     /// ## Example:
     ///
